@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Stream Viewer - Fixed</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .connection-form {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+
+        .btn-connect {
+            background: #4ade80;
+            color: white;
+        }
+
+        .btn-connect:hover {
+            background: #22c55e;
+            transform: translateY(-2px);
+        }
+
+        .btn-disconnect {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-disconnect:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+
+        .btn-disconnect:disabled,
+        .btn-connect:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .status.connected {
+            background: #4ade80;
+            color: white;
+        }
+
+        .status.disconnected {
+            background: #ef4444;
+            color: white;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: white;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .video-container {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        video {
+            width: 100%;
+            max-width: 100%;
+            border-radius: 10px;
+            background: #000;
+            display: block;
+        }
+
+        .no-stream {
+            aspect-ratio: 16/9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+        }
+
+        .no-stream-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .no-stream-text {
+            font-size: 18px;
+            opacity: 0.7;
+        }
+
+        .logs {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .log-time {
+            color: #94a3b8;
+            margin-right: 10px;
+        }
+
+        .log-info { color: #60a5fa; }
+        .log-success { color: #4ade80; }
+        .log-error { color: #f87171; }
+        .log-warning { color: #fbbf24; }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .debug-info {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 25px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎥 WebRTC Stream Viewer - FIXED</h1>
+            <p>Poprawiona wersja z debugowaniem</p>
+        </div>
+
+        <div class="connection-form">
+            <div class="form-group">
+                <label for="serverUrl">🌐 Adres serwera WebSocket:</label>
+                <input type="text" id="serverUrl" value="ws://192.168.0.25:8080/ws">
+            </div>
+
+            <div class="form-group">
+                <label for="roomId">🚪 Room ID:</label>
+                <input type="text" id="roomId" value="gym-stream-1760193234284">
+            </div>
+
+            <button class="btn-connect" id="connectBtn" onclick="connectToStream()">
+                ▶️ Połącz i oglądaj
+            </button>
+            <button class="btn-disconnect" id="disconnectBtn" onclick="disconnect()" disabled>
+                ⏹️ Rozłącz
+            </button>
+
+            <div class="status disconnected" id="status">
+                <div class="status-dot"></div>
+                <span>Rozłączono</span>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-label">Stan połączenia</div>
+                <div class="stat-value" id="connectionState">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">ICE Connection</div>
+                <div class="stat-value" id="iceState">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Video Tracks</div>
+                <div class="stat-value" id="videoTracks">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Audio Tracks</div>
+                <div class="stat-value" id="audioTracks">0</div>
+            </div>
+        </div>
+
+        <div class="video-container">
+            <div style="position: relative;">
+                <video id="remoteVideo" autoplay playsinline controls></video>
+                <div class="no-stream" id="noStream">
+                    <div class="no-stream-icon">📹</div>
+                    <div class="no-stream-text">Brak aktywnego streamu</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="debug-info">
+            <h3>🔍 Debug Info</h3>
+            <div id="debugInfo">Oczekiwanie na połączenie...</div>
+        </div>
+
+        <div class="logs" id="logs">
+            <div class="log-entry log-info">
+                <span class="log-time">[System]</span>
+                Gotowy do połączenia
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let pc = null;
+        let userId = 'viewer-' + Math.random().toString(36).substr(2, 9);
+        let currentRoomId = null;
+        let currentStreamerId = null;
+        let statsInterval = null;
+
+        const serverUrlInput = document.getElementById('serverUrl');
+        const roomIdInput = document.getElementById('roomId');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const statusDiv = document.getElementById('status');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const noStreamDiv = document.getElementById('noStream');
+        const logsDiv = document.getElementById('logs');
+        const debugInfoDiv = document.getElementById('debugInfo');
+
+        const configuration = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' }
+            ],
+            iceCandidatePoolSize: 10
+        };
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.innerHTML = `<span class="log-time">[${timestamp}]</span>${message}`;
+            logsDiv.insertBefore(logEntry, logsDiv.firstChild);
+            
+            while (logsDiv.children.length > 100) {
+                logsDiv.removeChild(logsDiv.lastChild);
+            }
+
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        function updateDebugInfo() {
+            if (!pc) {
+                debugInfoDiv.innerHTML = 'PeerConnection: NULL';
+                return;
+            }
+
+            const info = {
+                'Connection State': pc.connectionState,
+                'ICE State': pc.iceConnectionState,
+                'Signaling State': pc.signalingState,
+                'Remote Description': pc.remoteDescription ? 'SET' : 'NULL',
+                'Local Description': pc.localDescription ? 'SET' : 'NULL'
+            };
+
+            if (remoteVideo.srcObject) {
+                const tracks = remoteVideo.srcObject.getTracks();
+                info['Stream Tracks'] = tracks.length;
+                tracks.forEach((track, i) => {
+                    info[`Track ${i} (${track.kind})`] = `${track.readyState} | enabled: ${track.enabled} | muted: ${track.muted}`;
+                });
+            }
+
+            debugInfoDiv.innerHTML = Object.entries(info)
+                .map(([key, val]) => `<strong>${key}:</strong> ${val}`)
+                .join('<br>');
+        }
+
+        function updateStatus(connected) {
+            if (connected) {
+                statusDiv.className = 'status connected';
+                statusDiv.innerHTML = '<div class="status-dot"></div><span>Połączono</span>';
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.innerHTML = '<div class="status-dot"></div><span>Rozłączono</span>';
+            }
+        }
+
+        function updateConnectionStates() {
+            if (pc) {
+                document.getElementById('connectionState').textContent = pc.connectionState;
+                document.getElementById('iceState').textContent = pc.iceConnectionState;
+                
+                if (remoteVideo.srcObject) {
+                    const tracks = remoteVideo.srcObject.getTracks();
+                    document.getElementById('videoTracks').textContent = 
+                        tracks.filter(t => t.kind === 'video').length;
+                    document.getElementById('audioTracks').textContent = 
+                        tracks.filter(t => t.kind === 'audio').length;
+                }
+            }
+            updateDebugInfo();
+        }
+
+        function connectToStream() {
+            const serverUrl = serverUrlInput.value.trim();
+            const roomId = roomIdInput.value.trim();
+
+            if (!serverUrl || !roomId) {
+                alert('Proszę wypełnić wszystkie pola!');
+                return;
+            }
+
+            currentRoomId = roomId;
+            log('🔌 Łączenie z serwerem...', 'info');
+
+            ws = new WebSocket(serverUrl);
+
+            ws.onopen = () => {
+                log('✅ WebSocket połączony', 'success');
+                updateStatus(true);
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+
+                const joinMessage = {
+                    type: 'join',
+                    roomId: roomId,
+                    userId: userId,
+                    role: 'viewer'
+                };
+                ws.send(JSON.stringify(joinMessage));
+                log(`📤 Dołączanie do pokoju: ${roomId}`, 'info');
+            };
+
+            ws.onmessage = async (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    await handleMessage(message);
+                } catch (error) {
+                    log(`❌ Błąd przetwarzania wiadomości: ${error.message}`, 'error');
+                    console.error('Error details:', error);
+                }
+            };
+
+            ws.onerror = (error) => {
+                log(`❌ Błąd WebSocket`, 'error');
+                console.error('WebSocket error:', error);
+            };
+
+            ws.onclose = () => {
+                log('🔌 WebSocket rozłączony', 'warning');
+                updateStatus(false);
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            };
+
+            statsInterval = setInterval(updateConnectionStates, 1000);
+        }
+
+        async function handleMessage(message) {
+            log(`📨 Otrzymano: ${message.type}`, 'info');
+            console.log('📨 PEŁNA WIADOMOŚĆ:', message);
+
+            switch (message.type) {
+                case 'joined':
+                    log(`✅ Dołączono do pokoju: ${message.roomId}`, 'success');
+                    log(`👥 Streamerów: ${message.streamers_count}, Widzów: ${message.viewers_count}`, 'info');
+                    break;
+
+                case 'active-streamers':
+                    if (message.streamers && message.streamers.length > 0) {
+                        log(`👁️ Znaleziono ${message.streamers.length} streamer(ów)`, 'success');
+                        message.streamers.forEach(sid => {
+                            log(`  └─ Streamer ID: ${sid}`, 'info');
+                        });
+                    } else {
+                        log('⚠️ Brak aktywnych streamerów', 'warning');
+                    }
+                    break;
+
+                case 'stream-started':
+                    log(`🔴 Stream rozpoczęty przez: ${message.streamerId}`, 'success');
+                    currentStreamerId = message.streamerId;
+                    break;
+
+                case 'offer':
+                    log(`📥 Otrzymano OFFER od: ${message.senderId}`, 'success');
+                    currentStreamerId = message.senderId;
+                    await handleOffer(message.offer, message.senderId);
+                    break;
+
+                case 'ice-candidate':
+                    if (pc && message.candidate) {
+                        try {
+                            await pc.addIceCandidate(new RTCIceCandidate(message.candidate));
+                            log('🧊 Dodano ICE candidate', 'success');
+                        } catch (error) {
+                            log(`❌ Błąd dodawania ICE candidate: ${error.message}`, 'error');
+                        }
+                    }
+                    break;
+
+                case 'stream-stopped':
+                    log(`⏹️ Stream zatrzymany: ${message.streamerId}`, 'warning');
+                    showNoStream();
+                    break;
+
+                case 'streamer-left':
+                    log(`👋 Streamer opuścił pokój: ${message.streamerId}`, 'warning');
+                    showNoStream();
+                    break;
+
+                case 'error':
+                    log(`❌ Błąd serwera: ${message.message}`, 'error');
+                    alert(`Błąd: ${message.message}`);
+                    break;
+            }
+        }
+
+        async function handleOffer(offer, streamerId) {
+            try {
+                log('🔧 Tworzenie PeerConnection...', 'info');
+                
+                if (pc) {
+                    log('⚠️ Zamykam stare PeerConnection', 'warning');
+                    pc.close();
+                }
+
+                pc = new RTCPeerConnection(configuration);
+
+                pc.onicecandidate = (event) => {
+                    if (event.candidate && ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            type: 'ice-candidate',
+                            targetId: streamerId,
+                            candidate: event.candidate
+                        }));
+                        log('🧊 Wysłano ICE candidate', 'info');
+                    } else if (!event.candidate) {
+                        log('✅ ICE gathering complete', 'success');
+                    }
+                };
+
+                pc.ontrack = (event) => {
+                    log(`🎥 OTRZYMANO TRACK: ${event.track.kind}`, 'success');
+                    log(`   └─ Track ID: ${event.track.id}`, 'info');
+                    log(`   └─ Track state: ${event.track.readyState}`, 'info');
+                    log(`   └─ Track enabled: ${event.track.enabled}`, 'info');
+                    log(`   └─ Track muted: ${event.track.muted}`, 'info');
+                    log(`   └─ Streams count: ${event.streams.length}`, 'info');
+
+                    if (event.streams && event.streams[0]) {
+                        const stream = event.streams[0];
+                        log(`📺 Ustawiam srcObject (${stream.getTracks().length} tracks)`, 'success');
+                        
+                        stream.getTracks().forEach((track, i) => {
+                            log(`   └─ Track ${i}: ${track.kind} - ${track.readyState}`, 'info');
+                            
+                            track.onended = () => log(`⚠️ Track ${track.kind} ended`, 'warning');
+                            track.onmute = () => log(`🔇 Track ${track.kind} muted`, 'warning');
+                            track.onunmute = () => log(`🔊 Track ${track.kind} unmuted`, 'success');
+                        });
+
+                        remoteVideo.srcObject = stream;
+                        remoteVideo.style.display = 'block';
+                        noStreamDiv.style.display = 'none';
+
+                        remoteVideo.onloadedmetadata = () => {
+                            log('📊 Video metadata załadowane', 'success');
+                            log(`   └─ Wymiary: ${remoteVideo.videoWidth}x${remoteVideo.videoHeight}`, 'info');
+                        };
+
+                        remoteVideo.play()
+                            .then(() => log('▶️ Video AUTO-PLAY SUCCESS', 'success'))
+                            .catch(e => {
+                                log(`⚠️ Autoplay zablokowany: ${e.message}`, 'warning');
+                                log('👆 Kliknij video aby odtworzyć', 'warning');
+                            });
+                    }
+                };
+
+                pc.onconnectionstatechange = () => {
+                    log(`🔗 Connection state: ${pc.connectionState}`, 'info');
+                    updateConnectionStates();
+                    
+                    if (pc.connectionState === 'connected') {
+                        log('✅ POŁĄCZENIE WebRTC NAWIĄZANE!', 'success');
+                    } else if (pc.connectionState === 'failed') {
+                        log('❌ Połączenie WebRTC NIEUDANE', 'error');
+                    } else if (pc.connectionState === 'disconnected') {
+                        log('⚠️ Połączenie WebRTC rozłączone', 'warning');
+                    }
+                };
+
+                pc.oniceconnectionstatechange = () => {
+                    log(`🧊 ICE state: ${pc.iceConnectionState}`, 'info');
+                    updateConnectionStates();
+                };
+
+                pc.onsignalingstatechange = () => {
+                    log(`📡 Signaling state: ${pc.signalingState}`, 'info');
+                };
+
+                log('📝 Ustawiam Remote Description...', 'info');
+                await pc.setRemoteDescription(new RTCSessionDescription(offer));
+                log('✅ Remote Description SET', 'success');
+
+                log('📝 Tworzę Answer...', 'info');
+                const answer = await pc.createAnswer();
+                
+                log('📝 Ustawiam Local Description...', 'info');
+                await pc.setLocalDescription(answer);
+                log('✅ Local Description SET', 'success');
+
+                log('📤 Wysyłam Answer do streamera...', 'info');
+                ws.send(JSON.stringify({
+                    type: 'answer',
+                    targetId: streamerId,
+                    answer: answer
+                }));
+                log('✅ Answer wysłany!', 'success');
+
+                updateConnectionStates();
+
+            } catch (error) {
+                log(`❌ BŁĄD w handleOffer: ${error.message}`, 'error');
+                console.error('handleOffer error:', error);
+            }
+        }
+
+        function showNoStream() {
+            if (remoteVideo.srcObject) {
+                remoteVideo.srcObject.getTracks().forEach(track => track.stop());
+                remoteVideo.srcObject = null;
+            }
+            remoteVideo.style.display = 'none';
+            noStreamDiv.style.display = 'flex';
+            
+            document.getElementById('videoTracks').textContent = '0';
+            document.getElementById('audioTracks').textContent = '0';
+        }
+
+        function disconnect() {
+            if (statsInterval) {
+                clearInterval(statsInterval);
+                statsInterval = null;
+            }
+
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+
+            if (pc) {
+                pc.close();
+                pc = null;
+            }
+
+            showNoStream();
+            updateStatus(false);
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+            
+            document.getElementById('connectionState').textContent = '-';
+            document.getElementById('iceState').textContent = '-';
+            debugInfoDiv.innerHTML = 'Rozłączono';
+
+            log('👋 Rozłączono', 'info');
+        }
+
+        remoteVideo.style.display = 'none';
+        remoteVideo.onclick = () => {
+            if (remoteVideo.paused) {
+                remoteVideo.play()
+                    .then(() => log('▶️ Video wznowione (kliknięcie)', 'success'))
+                    .catch(e => log(`❌ Błąd odtwarzania: ${e.message}`, 'error'));
+            }
+        };
+    </script>
+</body>
+</html>

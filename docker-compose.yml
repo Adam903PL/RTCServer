@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  webrtc-server:
+    build:
+      context: .
+      dockerfile: Dockerfile   # <- pamiętaj o wielkości liter
+    container_name: webrtc-signaling-server
+    ports:
+      - "8080:8080"
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    volumes:
+      # logi do hosta
+      - ./logs:/app/logs
+      # (opcjonalnie dla wygody podczas dev) hot-reload statyków:
+      - ./static:/app/static:ro
+      # (opcjonalnie podczas dev) podmontuj źródła, jeśli chcesz modyfikować bez przebudowy obrazu:
+      # - ./src:/app/src
+      # - ./main.py:/app/main.py
+    networks:
+      - webrtc-network
+
+networks:
+  webrtc-network:
+    driver: bridge

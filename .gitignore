@@ -1,0 +1,71 @@
+# --- Python podstawy ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Skrypty C/Cpp kompilowane jako rozszerzenia
+*.so
+
+# --- Wirtualne środowiska ---
+.venv/
+venv/
+env/
+ENV/
+pip-wheel-metadata/
+
+# --- Testy / narzędzia ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+
+# --- Typowanie / lintery ---
+.mypy_cache/
+.pytype/
+.pyre/
+.ruff_cache/
+.pyright
+
+# --- Build / pakowanie ---
+build/
+dist/
+wheels/
+*.egg-info/
+.eggs/
+*.egg
+sdist/
+site/
+
+# --- Notatniki ---
+.ipynb_checkpoints/
+
+# --- Konfiguracje / IDE ---
+.vscode/
+.idea/
+*.code-workspace
+
+# --- Systemowe ---
+.DS_Store
+Thumbs.db
+
+# --- Logi i kopie zapasowe (Twoja prośba) ---
+logs/
+backup/
+*.log
+*.bak
+*.tmp
+
+# --- Inne przydatne ---
+.cache/
+coverage.xml
+pip-log.txt
+pip-delete-this-directory.txt
+.pyre_configuration.local
+.python-version
+
+# Pliki środowiskowe (jeśli nie chcesz commitować)
+.env
+.env.*
